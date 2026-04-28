@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Calc Sheet"/>
+<meta name="theme-color" content="#0f1117"/>
+<title>Calc Sheet</title>
+
+<!-- Inline PWA Manifest -->
+<link rel="manifest" href="data:application/manifest+json,{
+  %22name%22:%22Calc Sheet%22,
+  %22short_name%22:%22CalcSheet%22,
+  %22start_url%22:%22.%22,
+  %22display%22:%22standalone%22,
+  %22background_color%22:%22%230f1117%22,
+  %22theme_color%22:%22%230f1117%22,
+  %22description%22:%22Smart calculation sheet with sections A B C%22,
+  %22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230f1117'/%3E%3Ctext y='.9em' font-size='80' x='10'%3E%F0%9F%93%92%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22any%22,%22type%22:%22image/svg+xml%22}]
+}"/>
+
+<style>
+:root {
+  --bg:        #0f1117;
+  --surface:   #1a1d27;
+  --surface2:  #222536;
+  --border:    #2e3248;
+  --A:  #34d399; --Ab: #0d2e22;
+  --B:  #f87171; --Bb: #2e0d0d;
+  --C:  #60a5fa; --Cb: #0d1e35;
+  --D:  #c084fc;
+  --E:  #fbbf24;
+  --text:   #e2e8f0;
+  --muted:  #64748b;
+  --muted2: #94a3b8;
+  font-size: 15px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; padding-bottom: 72px; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px 10px;
+  position: sticky; top: 0; z-index: 20;
+}
+.topbar-main { display: flex; align-items: center; justify-content: space-between; }
+.app-title { font-size: 17px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 7px; }
+.app-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--A); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.date-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.date-row input[type=text] {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--muted2); font-size: 12px; padding: 4px 10px; outline: none; width: 130px;
+}
+.clear-btn {
+  padding: 5px 12px; border-radius: 8px; background: transparent;
+  border: 1px solid var(--border); color: var(--muted); font-size: 12px; cursor: pointer;
+}
+
+/* ── SUMMARY STRIP ── */
+.summary { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; }
+.summary::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; border-radius: 10px; padding: 5px 10px; min-width: 72px;
+  border: 1px solid; background: transparent;
+}
+.chip-label { font-size: 8px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.chip-val   { font-size: 12px; font-weight: 800; font-family: 'Courier New', monospace; white-space: nowrap; }
+
+/* ── CONTENT ── */
+.content { padding: 12px 10px 0; }
+
+/* ── SECTION ── */
+.sec-wrap { border-radius: 14px; margin-bottom: 12px; overflow: hidden; border: 1px solid; }
+.sec-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; border-bottom: 1px solid;
+}
+.sec-badge {
+  width: 28px; height: 28px; border-radius: 7px; font-weight: 900; font-size: 14px;
+  color: #000; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sec-info { flex: 1; }
+.sec-name { font-size: 13px; font-weight: 700; font-family: 'Courier New', monospace; }
+.sec-desc { font-size: 10px; color: var(--muted); }
+.sec-op   { font-size: 10px; font-weight: 800; letter-spacing: 1px; opacity: .7; }
+
+.sec-body { padding: 8px 10px 6px; }
+
+/* ── ROW ── */
+.entry-row {
+  display: grid; grid-template-columns: 1fr 1px 110px 28px;
+  gap: 0; margin-bottom: 6px; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--surface2);
+  transition: border-color .15s;
+}
+.entry-row:focus-within { border-color: var(--row-color, var(--A)); }
+.entry-row input {
+  background: transparent; border: none; color: var(--text);
+  font-size: 13px; outline: none; padding: 9px 10px; width: 100%;
+}
+.entry-row input::placeholder { color: var(--muted); font-size: 12px; }
+.entry-row input.name-in { font-weight: 500; }
+.entry-row input.val-in  { font-family: 'Courier New', monospace; font-size: 13px; text-align: right; }
+.divider { background: var(--border); width: 1px; }
+.del-btn {
+  background: transparent; border: none; color: var(--muted); font-size: 17px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border-left: 1px solid var(--border); transition: color .15s, background .15s;
+}
+.del-btn:hover:not(:disabled) { background: #ff444422; color: #ff8080; }
+.del-btn:disabled { opacity: .2; cursor: default; }
+
+/* parsed preview below row */
+.val-hint { font-size: 10px; color: var(--muted); font-family: 'Courier New', monospace; text-align: right; padding: 0 10px 4px; display: none; }
+.val-hint.show { display: block; }
+
+.add-btn {
+  width: 100%; padding: 8px; border-radius: 9px; font-size: 12px; font-weight: 600;
+  cursor: pointer; margin: 4px 0 6px; letter-spacing: .3px; border-width: 1.5px; border-style: dashed;
+  background: transparent;
+}
+
+/* section total */
+.sec-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 10px; border-radius: 9px; border: 1px solid;
+}
+.sec-total-label { font-size: 11px; color: var(--muted2); }
+.sec-total-val   { font-size: 15px; font-weight: 800; font-family: 'Courier New', monospace; }
+
+/* ── RESULT CARDS ── */
+.results { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.res-card {
+  border-radius: 14px; padding: 12px 14px;
+  border: 1px solid; position: relative; overflow: hidden;
+}
+.res-card::before {
+  content: ''; position: absolute; top: -20px; right: -20px;
+  width: 70px; height: 70px; border-radius: 50%; opacity: .08;
+}
+.res-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.res-formula { font-size: 10px; color: var(--muted); font-family: 'Courier New', monospace; margin-bottom: 6px; }
+.res-val { font-size: 20px; font-weight: 900; font-family: 'Courier New', monospace; }
+.res-card.final { grid-column: span 2; }
+.res-card.final .res-val { font-size: 26px; }
+
+/* ── HINT ── */
+.hint {
+  margin-top: 12px; padding: 10px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px; color: var(--muted); font-size: 11px; line-height: 1.9;
+}
+.hint b { color: var(--A); }
+
+/* ── BOTTOM BAR ── */
+.btmbar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  display: flex; gap: 8px; z-index: 20;
+}
+.btmbar button {
+  flex: 1; padding: 11px 6px; border-radius: 12px; border: none;
+  font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: .2px;
+}
+.btn-share { background: #1d4ed8; color: #fff; }
+.btn-pdf   { background: #065f46; color: #fff; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; top: 90px; left: 50%; transform: translateX(-50%) scale(.9);
+  background: var(--A); color: #000; padding: 9px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 700; z-index: 99; opacity: 0;
+  transition: opacity .25s, transform .25s; pointer-events: none; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+/* ── PRINT ── */
+@media print {
+  .topbar { position: static; background: #fff; border-bottom: 1px solid #ddd; }
+  .btmbar, .toast, .add-btn, .del-btn, .clear-btn, .hint { display: none !important; }
+  body { background: #fff; color: #000; padding-bottom: 0; }
+  .sec-wrap, .res-card { border-color: #ccc !important; background: #fafafa !important; box-shadow: none !important; }
+  .entry-row { background: #fff !important; border-color: #ddd !important; }
+  .entry-row input { color: #000 !important; }
+  .sec-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .chip { border-color: #ccc !important; background: #f5f5f5 !important; }
+  .chip-val, .sec-name, .sec-total-val, .res-val { color: #000 !important; }
+  .res-card::before { display: none; }
+  .results { grid-template-columns: 1fr 1fr; }
+  .res-card.final { grid-column: span 2; }
+  .summary { overflow-x: visible; flex-wrap: wrap; }
+  .divider { background: #ddd; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-main">
+    <div class="app-title"><span class="dot"></span> Calc Sheet</div>
+    <button class="clear-btn" onclick="clearAll()">🗑 Clear</button>
+  </div>
+  <div class="date-row">
+    <input type="text" id="dateInput" placeholder="Date / Note (e.g. 26-04-2026)" oninput="saveData()"/>
+  </div>
+  <div class="summary" id="summary"></div>
+</div>
+
+<div class="content">
+  <div id="sectionA"></div>
+  <div id="sectionB"></div>
+  <div id="sectionC"></div>
+
+  <!-- Results -->
+  <div class="results">
+    <div class="res-card" style="background:#1a0f2e;border-color:#7c3aed33;">
+      <div class="res-label" style="color:var(--D)">D = A − B</div>
+      <div class="res-formula" id="d-formula">—</div>
+      <div class="res-val" id="d-val">0</div>
+    </div>
+    <div class="res-card" style="background:#1c1203;border-color:#d9770633;">
+      <div class="res-label" style="color:var(--E)">Section C</div>
+      <div class="res-formula" id="c-formula">—</div>
+      <div class="res-val" id="c-val-res">0</div>
+    </div>
+    <div class="res-card final" style="background:linear-gradient(135deg,#1a1203,#0f1a2e);border-color:#fbbf2444;">
+      <div class="res-label" style="color:var(--E)">✦ FINAL RESULT &nbsp;&nbsp; E = D + C</div>
+      <div class="res-formula" id="e-formula">—</div>
+      <div class="res-val" id="e-val">0</div>
+    </div>
+  </div>
+
+  <div class="hint">
+    💡 <b>K</b> = ×1,000 &nbsp;|&nbsp; <b>L</b> = ×1,00,000 &nbsp;|&nbsp; <b>Cr</b> = ×1,00,00,000<br>
+    🔒 Auto-saved in browser — data stays even after closing.
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="btmbar">
+  <button class="btn-share" onclick="shareAsText()">📤 Copy &amp; Share</button>
+  <button class="btn-pdf"   onclick="window.print()">🖨 Save as PDF</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ───────────────── CONFIG ───────────────── */
+const SECS = [
+  { key:'A', label:'Section A', color:'var(--A)', hex:'#34d399', bg:'var(--Ab)', op:'ADD', desc:'Values to Add',      id:'sectionA' },
+  { key:'B', label:'Section B', color:'var(--B)', hex:'#f87171', bg:'var(--Bb)', op:'SUB', desc:'Values to Subtract', id:'sectionB' },
+  { key:'C', label:'Section C', color:'var(--C)', hex:'#60a5fa', bg:'var(--Cb)', op:'ADD', desc:'Values to Add',      id:'sectionC' },
+];
+
+/* ───────────────── STATE ───────────────── */
+// Each row = { name:'', val:'' }
+let state = {
+  A: [{name:'',val:''}],
+  B: [{name:'',val:''}],
+  C: [{name:'',val:''}],
+};
+
+/* ───────────────── PERSIST ───────────────── */
+function save() {
+  try { localStorage.setItem('cs2', JSON.stringify({ state, date: document.getElementById('dateInput').value })); } catch(e){}
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('cs2'));
+    if (d) { state = d.state; if(d.date) document.getElementById('dateInput').value = d.date; }
+  } catch(e) {}
+}
+
+/* ───────────────── PARSE / FORMAT ───────────────── */
+function pv(s) {
+  if (!s||!s.trim()) return 0;
+  const t = s.trim().toUpperCase().replace(/,/g,'');
+  if (t.endsWith('CR')) return parseFloat(t)*1e7;
+  if (t.endsWith('C') && !isNaN(parseFloat(t))) return parseFloat(t)*1e7;
+  if (t.endsWith('L'))  return parseFloat(t)*1e5;
+  if (t.endsWith('K'))  return parseFloat(t)*1e3;
+  return parseFloat(t)||0;
+}
+function fmt(n)  { return isNaN(n)?'—':Math.abs(n).toLocaleString('en-IN'); }
+function sign(n) { return n<0?'−':''; }
+function fmts(n) { return sign(n)+fmt(n); }
+function sum(key){ return state[key].reduce((s,r)=>s+pv(r.val),0); }
+
+/* ───────────────── TOAST ───────────────── */
+function toast(msg, err) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.background=err?'#ef4444':'#34d399'; t.style.color=err?'#fff':'#000';
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+/* ───────────────── SHARE ───────────────── */
+function shareAsText() {
+  const date = document.getElementById('dateInput').value;
+  const A=sum('A'), B=sum('B'), C=sum('C'), D=A-B, E=D+C;
+  const w = 14;
+  let txt = `📒 Calc Sheet${date?' — '+date:''}\n${'─'.repeat(32)}\n`;
+  ['A','B','C'].forEach((k,i)=>{
+    const ops=['Add','Subtract','Add'][i];
+    txt += `${['📗','📙','📘'][i]} SECTION ${k} (${ops})\n`;
+    state[k].forEach((r,j)=>{
+      if(!r.val.trim()&&!r.name.trim()) return;
+      const name = r.name.trim()||(j+1)+'.';
+      const val  = fmt(pv(r.val));
+      txt += `  ${name.padEnd(w)} ${val}\n`;
+    });
+    txt += `  ${'─'.repeat(24)}\n  ${'Total '+k+':'.padEnd(w)} ${fmt(sum(k))}\n\n`;
+  });
+  txt += `${'─'.repeat(32)}\n`;
+  txt += `  D = A − B${''.padEnd(7)} ${fmts(D)}\n`;
+  txt += `  E = D + C${''.padEnd(7)} ${fmts(E)}\n`;
+  txt += `${'─'.repeat(32)}\n✦ FINAL (E): ${fmts(E)}`;
+
+  if (navigator.share) {
+    navigator.share({title:`Calc Sheet`,text:txt}).catch(()=>copy(txt));
+  } else { copy(txt); }
+}
+function copy(txt) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(()=>toast('✅ Copied! Paste in WhatsApp / SMS')).catch(()=>legacyCopy(txt));
+  } else legacyCopy(txt);
+}
+function legacyCopy(txt) {
+  const ta=Object.assign(document.createElement('textarea'),{value:txt});
+  ta.style.cssText='position:fixed;opacity:0;top:0;left:0'; document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); toast('✅ Copied!'); } catch { toast('❌ Copy failed — use PDF','err'); }
+  document.body.removeChild(ta);
+}
+
+/* ───────────────── RENDER SECTION ───────────────── */
+function renderSec(cfg) {
+  const rows = state[cfg.key];
+  const total = sum(cfg.key);
+
+  const rowsHtml = rows.map((r,i)=>{
+    const hintVal = pv(r.val);
+    const showHint = r.val.trim() && (r.val.trim().toUpperCase().endsWith('K')||r.val.trim().toUpperCase().endsWith('L')||r.val.trim().toUpperCase().endsWith('CR')||r.val.trim().toUpperCase().endsWith('C'));
+    return `
+    <div class="entry-row" style="--row-color:${cfg.hex}" id="row-${cfg.key}-${i}">
+      <input class="name-in" type="text" placeholder="Name / Label"
+        value="${r.name.replace(/"/g,'&quot;')}"
+        oninput="upName('${cfg.key}',${i},this.value)"/>
+      <div class="divider"></div>
+      <input class="val-in" type="text" inputmode="decimal" placeholder="Amount"
+        value="${r.val.replace(/"/g,'&quot;')}"
+        oninput="upVal('${cfg.key}',${i},this.value)"/>
+      <button class="del-btn" onclick="delRow('${cfg.key}',${i})" ${rows.length===1?'disabled':''}>×</button>
+    </div>
+    <div class="val-hint ${showHint?'show':''}" id="hint-${cfg.key}-${i}" style="color:${cfg.hex}">
+      = ${fmt(hintVal)}
+    </div>`;
+  }).join('');
+
+  document.getElementById(cfg.id).innerHTML = `
+  <div class="sec-wrap" style="border-color:${cfg.hex}33;background:${cfg.bg};">
+    <div class="sec-head" style="border-bottom-color:${cfg.hex}22;background:${cfg.hex}10;">
+      <div class="sec-badge" style="background:${cfg.hex}">${cfg.key}</div>
+      <div class="sec-info">
+        <div class="sec-name" style="color:${cfg.hex}">${cfg.label}</div>
+        <div class="sec-desc">${cfg.desc}</div>
+      </div>
+      <div class="sec-op" style="color:${cfg.hex}">${cfg.op}</div>
+    </div>
+    <div class="sec-body">
+      ${rowsHtml}
+      <button class="add-btn" style="color:${cfg.hex};border-color:${cfg.hex}44;" onclick="addRow('${cfg.key}')">+ Add Row</button>
+      <div class="sec-total" style="border-color:${cfg.hex}33;background:${cfg.hex}10;">
+        <span class="sec-total-label">Section ${cfg.key} Total</span>
+        <span class="sec-total-val" style="color:${cfg.hex}">${fmt(total)}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderResults() {
+  const A=sum('A'), B=sum('B'), C=sum('C'), D=A-B, E=D+C;
+
+  document.getElementById('d-formula').textContent = `${fmt(A)} − ${fmt(B)}`;
+  const dEl=document.getElementById('d-val'); dEl.textContent=fmts(D); dEl.style.color=D<0?'#ef4444':'var(--D)';
+
+  document.getElementById('c-formula').textContent = `Total C`;
+  document.getElementById('c-val-res').textContent = fmt(C);
+  document.getElementById('c-val-res').style.color = 'var(--C)';
+
+  document.getElementById('e-formula').textContent = `(${fmts(D)}) + ${fmt(C)}`;
+  const eEl=document.getElementById('e-val'); eEl.textContent=fmts(E); eEl.style.color=E<0?'#ef4444':'var(--E)';
+
+  const chips=[
+    {label:'A',val:A,color:'var(--A)',hex:'#34d399'},
+    {label:'B',val:B,color:'var(--B)',hex:'#f87171'},
+    {label:'C',val:C,color:'var(--C)',hex:'#60a5fa'},
+    {label:'D=A−B',val:D,color:D<0?'#ef4444':'var(--D)',hex:D<0?'#ef4444':'#c084fc'},
+    {label:'E=Final',val:E,color:E<0?'#ef4444':'var(--E)',hex:E<0?'#ef4444':'#fbbf24'},
+  ];
+  document.getElementById('summary').innerHTML = chips.map(c=>`
+    <div class="chip" style="border-color:${c.hex}55;">
+      <div class="chip-label">${c.label}</div>
+      <div class="chip-val" style="color:${c.color}">${c.val<0?'−':''}${fmt(c.val)}</div>
+    </div>`).join('');
+}
+
+function render() { SECS.forEach(renderSec); renderResults(); }
+
+/* ───────────────── MUTATIONS ───────────────── */
+function upName(key,i,v) { state[key][i].name=v; save(); }
+function upVal(key,i,v) {
+  state[key][i].val=v; save();
+  // live-update totals & results without full re-render
+  renderResults();
+  const cfg=SECS.find(s=>s.key===key);
+  const totEl=document.querySelector(`#${cfg.id} .sec-total-val`);
+  if(totEl) totEl.textContent=fmt(sum(key));
+  // hint
+  const hintEl=document.getElementById(`hint-${key}-${i}`);
+  if(hintEl){
+    const upper=v.trim().toUpperCase();
+    const shorthand=upper.endsWith('K')||upper.endsWith('L')||upper.endsWith('CR')||(upper.endsWith('C')&&!isNaN(parseFloat(upper)));
+    if(v.trim()&&shorthand){ hintEl.textContent='= '+fmt(pv(v)); hintEl.classList.add('show'); }
+    else { hintEl.classList.remove('show'); }
+  }
+}
+function addRow(key) { state[key].push({name:'',val:''}); save(); render(); }
+function delRow(key,i) { if(state[key].length<=1)return; state[key].splice(i,1); save(); render(); }
+function clearAll() {
+  if(confirm('Clear all data?')){ state={A:[{name:'',val:''}],B:[{name:'',val:''}],C:[{name:'',val:''}]}; save(); render(); }
+}
+
+/* ───────────────── INIT ───────────────── */
+load();
+render();
+</script>
+</body>
+</html>
